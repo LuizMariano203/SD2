@@ -39,7 +39,7 @@ module testbench;
 
         .clk(clock_tb),
         .ads(res_tb),
-        .we(weMem),
+        .we(weMem_tb),
         .din(doutA_tb),
         .dout(doutMem_tb)
     );
