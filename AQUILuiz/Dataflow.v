@@ -361,34 +361,41 @@ assign S5 = (sinalMux == 1'b0) ? (dout_PC):(tb); //  Se houver reset, pega a ent
             
 endmodule
 
+module Dataflow (
+  input wire clock,
+  input wire reset,
+  input wire [31:0] instruction,
+  input wire sinalMux5,
+  input wire [1:0] sinalMux2,
+  input wire [31:0] S5,
+  input wire funct7,
+  input wire [2:0] funct3,
+  input wire [3:0] control,
+  input wire signed [63:0] res,
+  input wire [63:0] doutMem,
+  input wire [3:0] state_reg,
+  input wire [4:0] Rw,
+  input wire [4:0] Ra,
+  input wire [4:0] Rb,
+  input wire [6:0] opcode,
+  input wire signed [63:0] doutA,
+  input wire signed [63:0] doutB,
+  input wire signed [63:0] S1,
+  input wire signed [63:0] S2,
+  input wire signed [63:0] S4,
+  input wire [31:0] C,
+  input wire [31:0] PC,
+  input wire [31:0] IR,
+  input wire [31:0] doutIR,
+  input wire flag,
+  input wire signed [63:0] imm,
+  input wire [31:0] somafour,
+  input wire [31:0] somaimm
+);
 
-    // Inputs
-    wire clock;
-    reg reset;
-    wire [31:0] instruction;
-    wire sinalMux5;
-    wire [31:0] S5;
-    wire funct7; // Da memória de instrução para a ALUControl
-    wire [2:0] funct3; // Da memória de instrução para a ALUControl
-    wire [3:0] control; // Da ALUControl para a ULA
-    wire signed [63:0] res;
-    wire [63:0] doutMem;
-    wire [3:0] state_reg;
-    wire [4:0] Rw;
-    wire [4:0] Ra, Rb;
-    wire [6:0] opcode;
-    wire signed [63:0] doutA;
-    wire signed [63:0] doutB;
-    wire signed [63:0] S1;
-    wire signed [63:0] S2;
-    wire signed [63:0] S4;
-    wire [31:0] C;
-    wire [31:0] PC;
-    wire [31:0] IR;
-    wire [31:0] doutIR;
-    wire flag;
-    wire signed [63:0] imm;
-    wire [31:0] somafour, somaimm;
+  // Módulos e conexões aqui ...
+
+
 
 // Mux 5 (saída PC e testbench)
 
@@ -499,4 +506,7 @@ endmodule
         .sinalMux(sinalMux5)
     );
 
+endmodule
 
+//somafour, somaimm;clock,reset,instruction,sinalMux5,S5,funct7,funct3,control,res,doutMem,state_reg,Rw,Ra,Rb,opcode
+//doutA,doutB,S1,S2,S4,C,PC,IR,doutIR,flag,imm,somafour,somaimm
