@@ -27,7 +27,145 @@ module fd
     // 0010: S    2: overflow
     // 0011: SB
     // 0100: U
-    // 0101: UJ             
+    // 0101: UJ
+
+    wire clock;
+    reg reset;
+    wire [31:0] instruction;
+    wire sinalMux5;
+    wire sinalMux4;
+    wire [1:0] sinalMux2;
+    wire [31:0] S5;
+    wire funct7; // Da memória de instrução para a ALUControl
+    wire [2:0] funct3; // Da memória de instrução para a ALUControl
+    wire [3:0] control; // Da ALUControl para a ULA
+    wire signed [63:0] res;
+    wire [63:0] doutMem;
+    wire [3:0] state_reg;
+    wire [4:0] Rw;
+    wire [4:0] Ra, Rb;
+    wire [6:0] opcode;
+    wire signed [63:0] doutA;
+    wire signed [63:0] doutB;
+    wire signed [63:0] S1;
+    wire signed [63:0] S2;
+    wire signed [63:0] S4;
+    wire [31:0] C;
+    wire [31:0] PC;
+    wire [31:0] IR;
+    wire [31:0] doutIR;
+    wire flag;
+    wire signed [63:0] imm;
+    wire [31:0] somafour, somaimm;
+
+    ULA uut (
+        .a(doutA), 
+        .b(S1), 
+        .soma(res),
+        .sinal(control),
+        .flag(flag)
+    );
+
+    registrador utt (
+
+        .clk(clock),
+        .din(S2),
+        .we(weReg),
+        .Rw(Rw),
+        .Ra(Ra),
+        .Rb(Rb),
+        .doutA(doutA),
+        .doutB(doutB)
+    );
+
+    memoria utu (
+
+        .ads(res),
+        .we(weMem),
+        .din(doutB),
+        .dout(doutMem)
+    );
+
+    Mux1 utv (
+        .imm(imm),
+        .doutB(doutB),
+        .sinalMux(alu_src),
+        .S1(S1)
+    );
+
+    Mux2 uvv (
+        .dout(doutMem),
+        .soma(res),
+        .PC_four(somafour),
+        .PC_imm(somaimm),
+        .sinalMux(sinalMux2),
+        .S2(S2)
+    );
+    
+
+    PC uhh(
+        .clock(clock),
+        .r_enable(wePC),
+        .data_in(C),
+        .data_out(PC)
+    );
+
+    IR huu (
+        .clock(clock),
+        .r_enable(weIR),
+        .data_in(IR),
+        .data_out(doutIR),
+        .rs1(Ra),
+        .rs2(Rb),
+        .rd(Rw),
+        .opcode(opcode),
+        .funct7(funct7),
+        .funct3(funct3)
+
+    );
+
+    imm_generator hii (
+        .palavra(doutIR),
+        .opcode(opcode),
+        .imm(imm)
+
+    );
+
+    somador_four itt(
+        .dout_pc(PC),
+        .soma(somafour)
+
+    );
+
+    somador_imm its (
+        .dout(S4),
+        .imm(imm),
+        .soma(somaimm)
+    );
+
+    Mux3 ihs (
+        .four_some(somafour),
+        .imm_some(somaimm),
+        .flag(flag),
+        .S3(C)
+    );
+
+    Mux4 iss (
+        .doutA(doutA),
+        .PC(PC),
+        .sinalMux(sinalMux4),
+        .S4(S4)
+    );
+
+    Mux5 hhh (
+        .dout_PC(PC),
+        .tb(instruction),
+        .S5(S5),
+        .sinalMux(sinalMux5)
+    );
+
+//as entradas estao diferentes e por isso precisa criar assign para associar os nomes
+              
 endmodule
 
 module ULA (b, a, sinal, soma, flag);
@@ -315,13 +453,11 @@ module Mux2 (dout, soma , PC_four, PC_imm, sinalMux, S2);
 input signed [63:0] dout, soma;
 input signed [31:0] PC_four, PC_imm;
 output signed [63:0] S2;
-input [1:0] sinalMux;
+input sinalMux;
 
 
-assign S2 = (sinalMux == 2'b00) ? (dout):
+assign S2 = (sinalMux == 0) ? (dout):
             (sinalMux == 2'b01) ? (soma):
-            (sinalMux == 2'b10) ? (PC_four):
-                                  (PC_imm);
             
 endmodule
 
@@ -360,153 +496,3 @@ input sinalMux;
 assign S5 = (sinalMux == 1'b0) ? (dout_PC):(tb); //  Se houver reset, pega a entrada do endereço da instrução pelo testbench
             
 endmodule
-
-module Dataflow (
-  input wire clock,
-  input wire reset,
-  input wire [31:0] instruction,
-  input wire sinalMux5,
-  input wire [1:0] sinalMux2,
-  input wire [31:0] S5,
-  input wire funct7,
-  input wire [2:0] funct3,
-  input wire [3:0] control,
-  input wire signed [63:0] res,
-  input wire [63:0] doutMem,
-  input wire [3:0] state_reg,
-  input wire [4:0] Rw,
-  input wire [4:0] Ra,
-  input wire [4:0] Rb,
-  input wire [6:0] opcode,
-  input wire signed [63:0] doutA,
-  input wire signed [63:0] doutB,
-  input wire signed [63:0] S1,
-  input wire signed [63:0] S2,
-  input wire signed [63:0] S4,
-  input wire [31:0] C,
-  input wire [31:0] PC,
-  input wire [31:0] IR,
-  input wire [31:0] doutIR,
-  input wire flag,
-  input wire signed [63:0] imm,
-  input wire [31:0] somafour,
-  input wire [31:0] somaimm
-);
-
-  // Módulos e conexões aqui ...
-
-
-
-// Mux 5 (saída PC e testbench)
-
-
-    ULA uut (
-        .a(doutA), 
-        .b(S1), 
-        .soma(res),
-        .sinal(control),
-        .flag(flag)
-    );
-
-    registrador utt (
-
-        .clk(clock),
-        .din(S2),
-        .we(weReg),
-        .Rw(Rw),
-        .Ra(Ra),
-        .Rb(Rb),
-        .doutA(doutA),
-        .doutB(doutB)
-    );
-
-    memoria utu (
-
-        .ads(res),
-        .we(weMem),
-        .din(doutB),
-        .dout(doutMem)
-    );
-
-    Mux1 utv (
-        .imm(imm),
-        .doutB(doutB),
-        .sinalMux(sinalMux1),
-        .S1(S1)
-    );
-
-    Mux2 uvv (
-        .dout(doutMem),
-        .soma(res),
-        .PC_four(somafour),
-        .PC_imm(somaimm),
-        .sinalMux(sinalMux2),
-        .S2(S2)
-    );
-    
-
-    PC uhh(
-        .clock(clock),
-        .r_enable(wePC),
-        .data_in(C),
-        .data_out(PC)
-    );
-
-    IR huu (
-        .clock(clock),
-        .r_enable(weIR),
-        .data_in(IR),
-        .data_out(doutIR),
-        .rs1(Ra),
-        .rs2(Rb),
-        .rd(Rw),
-        .opcode(opcode),
-        .funct7(funct7),
-        .funct3(funct3)
-
-    );
-
-    imm_generator hii (
-        .palavra(doutIR),
-        .opcode(opcode),
-        .imm(imm)
-
-    );
-
-    somador_four itt(
-        .dout_pc(PC),
-        .soma(somafour)
-
-    );
-
-    somador_imm its (
-        .dout(S4),
-        .imm(imm),
-        .soma(somaimm)
-    );
-
-    Mux3 ihs (
-        .four_some(somafour),
-        .imm_some(somaimm),
-        .flag(flag),
-        .S3(C)
-    );
-
-    Mux4 iss (
-        .doutA(doutA),
-        .PC(PC),
-        .sinalMux(sinalMux4),
-        .S4(S4)
-    );
-
-    Mux5 hhh (
-        .dout_PC(PC),
-        .tb(instruction),
-        .S5(S5),
-        .sinalMux(sinalMux5)
-    );
-
-endmodule
-
-//somafour, somaimm;clock,reset,instruction,sinalMux5,S5,funct7,funct3,control,res,doutMem,state_reg,Rw,Ra,Rb,opcode
-//doutA,doutB,S1,S2,S4,C,PC,IR,doutIR,flag,imm,somafour,somaimm
