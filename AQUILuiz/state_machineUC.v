@@ -1,3 +1,54 @@
+module uc (
+    input clk, rst_n,                       // clock borda subida, reset assíncrono ativo baixo
+    input [6:0] opcode,                     // OpCode direto do IR no FD
+    output d_mem_we, rf_we,                 // Habilita escrita na memória de dados e no banco de registradores
+    input  [3:0] alu_flags,                 // Flags da ULA
+    output [3:0] alu_cmd,                   // Operação da ULA
+    output alu_src, pc_src, rf_src          // Seletor dos MUXes
+);
+  
+  wire [3:0] state_reg;
+  wire Mux1, Mux4, weMem, weReg;
+  wire [1:0] Mux2;
+  wire wePc, weIR;
+
+  state_machineUC sm (
+    .clk(clk),
+    .reset(~rst_n),
+    .state_reg(state_reg)
+  );
+
+  UC uc (
+    .clk(clk),
+    .state_reg(state_reg),
+    .opcode(opcode),
+    .aluop(alu_cmd),
+    .Mux1(Mux1),
+    .Mux2(Mux2),
+    .Mux4(Mux4),
+    .weMem(weMem),
+    .weReg(weReg),
+    .wePc(wePc),
+    .weIR(weIR)
+  );
+
+  ALUControl alu_ctrl (
+    .aluop(alu_cmd),
+    .funct7(opcode[6]),
+    .funct3(opcode[5:3]),
+    .control(alu_flags)
+  );
+
+  assign d_mem_we = weMem;
+  assign rf_we = weReg;
+  assign alu_src = Mux1;
+  assign pc_src = wePc;
+  assign rf_src = Mux2;
+
+endmodule
+
+
+
 module state_machineUC (clk,reset,state_reg);
   input wire clk;
   input wire reset;
@@ -64,11 +115,12 @@ module UC (clk,state_reg,opcode,aluop,Mux1, Mux2, Mux4, weMem, weReg, wePc, weIR
   input wire clk;
   input wire [3:0] state_reg;
   reg [3:0] state_next;
-  input [6:0] opcode;
-  output [1:0] aluop;
+  input [6:0] opcode;//opcode
+  output [3:0] aluop;//alu_cmd
   reg [6:0] reg_opcode;
-  output  Mux1, Mux4, weMem, weReg;
-  output reg wePc;
+  input [3:0] alu_flags;//ainda nao usado
+  output  Mux1, Mux4, weMem, weReg;//weMem=d_mem_we e weReg=rf_we
+  output reg wePc;//pc_src
   output [1:0] Mux2;
   output reg weIR;
   reg[8:0] control;
@@ -134,14 +186,14 @@ module UC (clk,state_reg,opcode,aluop,Mux1, Mux2, Mux4, weMem, weReg, wePc, weIR
 endmodule
 
 module ALUControl(
-input [1:0] aluop,
+input [3:0] aluop,
 input funct7, input [2:0] funct3,
 output [3:0] control);
 
-assign control = (aluop == 2'b10 && {funct7,funct3} == 4'b0000) ?  4'b0010: // ADD
-                 (aluop == 2'b10 && {funct7,funct3} == 4'b0110) ? 4'b0110: // SUB
-                 (aluop == 2'b00) ? 4'b0010: // outras
-                 (aluop == 2'b01) ? 4'b0110: // outras
+assign control = (aluop == 4'b0010 && {funct7,funct3} == 4'b0000) ?  4'b0010: // ADD
+                 (aluop == 4'b0010 && {funct7,funct3} == 4'b0110) ? 4'b0110: // SUB
+                 (aluop == 4'b0000) ? 4'b0010: // outras
+                 (aluop == 4'b0001) ? 4'b0110: // outras
                                     4'bxxxx; // default
 
 endmodule
