@@ -8,9 +8,8 @@ module uc (
 );
   
   wire [3:0] state_reg;
-  wire Mux1, Mux4, weMem, weReg;
+  wire Mux1, Mux3, weMem, weReg;
   wire [1:0] Mux2;
-  wire wePc, weIR;
 
   state_machineUC sm (
     .clk(clk),
@@ -23,25 +22,14 @@ module uc (
     .state_reg(state_reg),
     .opcode(opcode),
     .alu_cmd(alu_cmd),
-    .Mux1(Mux1),
-    .Mux2(Mux2),
-    .Mux4(Mux4),
-    .weMem(weMem),
-    .weReg(weReg),
-    .wePc(wePc),
-    .weIR(weIR)
+    .Mux1(alu_src),
+    .Mux2(rf_src),
+    .Mux3(pc_src),
+    .weMem(d_mem_we),
+    .weReg(rf_we)
   );
 
-
-  assign d_mem_we = weMem;
-  assign rf_we = weReg;
-  assign alu_src = Mux1;
-  assign pc_src = wePc;
-  assign rf_src = Mux2;
-
 endmodule
-
-
 
 module state_machineUC (clk,reset,state_reg);
   input wire clk;
@@ -104,25 +92,26 @@ module state_machineUC (clk,reset,state_reg);
 
 endmodule
 
-module UC (clk,state_reg,opcode,alu_cmd,Mux1, Mux2, Mux4, weMem, weReg, wePc, weIR);
+module UC (clk, state_reg, opcode, alu_cmd, Mux1, Mux2, Mux3, weMem, weReg);
 
   input wire clk;
   input wire [3:0] state_reg;
   reg [3:0] state_next;
   input [6:0] opcode;//opcode
   output [3:0] alu_cmd;//alu_cmd
-  reg [6:0] reg_opcode;
-  input [3:0] alu_flags;//ainda nao usado
-  output  Mux1, Mux4, weMem, weReg;//weMem=d_mem_we e weReg=rf_we
+  reg [6:0] reg_opcode; // opcode
+  input [3:0] alu_flags;// Flags vindas da ULA (zero, MSB, overflow)
+  output Mux1, weMem, weReg;//weMem=d_mem_we e weReg=rf_we
+  output reg Mux3;
   output reg wePc;//pc_src
-  output [1:0] Mux2;
+  output Mux2;
   output reg weIR;
-  reg[8:0] control;
+  reg[8:0] control_UC;
   //quem recebe a instrução é o FD
   parameter IDLE = 4'b0000, FETCH = 4'b0001, DECODE = 4'b0010, EXECUTE = 4'b0011,
   WRITE_BACK = 4'b0100;
 
-  assign { weReg, weMem, Mux4, Mux2, Mux1, alu_cmd} = control;
+  assign {weReg, weMem, Mux2, Mux1, alu_cmd} = control_UC;
 
 /*   // Counter for tracking cycles spent in WB state
   reg [2:0] wb_counter; */
@@ -132,31 +121,42 @@ module UC (clk,state_reg,opcode,alu_cmd,Mux1, Mux2, Mux4, weMem, weReg, wePc, we
       case (state_reg)
         IDLE:
         begin
-          // weIR=1;
 
           end
         FETCH:
          begin
-          weIR=1;
+  
             //vai passar um sinal que vai permitir gravar a instrução da memória no IR e é lá que vai distrinchar as partes
           end
         DECODE:
           begin
-          weIR=0;
   
           reg_opcode<=opcode;
             //vai pegar o opcode
           end
         EXECUTE:
         begin
-            case(reg_opcode)
-              7'b0000011: control <= 8'b10000000;
-              7'b0100011: control <= 8'b01000000;
-              7'b0110011: control <= 8'b10x01110;
-              default: control <=  8'bxxxxxxxx;
-              endcase
-              weIR =0;
-              wePc =1;
+
+          if(reg_opcode == 7'b1100011 && alu_flags[0]==1)
+            begin
+              Mux3 <= 1;
+            end
+
+          else 
+           begin
+              Mux3 <= 0;
+          end
+
+          case(reg_opcode)
+            7'b0110011: control_UC <= 8'b10000000; // ADD
+            7'b0110011: control_UC <= 8'b10000000; // SUB
+            7'b0110011: control_UC <= 8'b10000000; // AND
+            7'b0110011: control_UC <= 8'b10000000; // OR
+            7'b0000011: control_UC <= 8'b10110001; // LOAD
+            7'b0100011: control_UC <= 8'b01110010; // STORE
+            7'b1100011: control_UC <= 8'b00x00011; // BEQ
+            default: control_UC <=  8'bxxxxxxxx;
+            endcase
 
               // (Opcode == 7'b0110011) ? 8'b1,1,1,0,0,01,1 : // Add - weIR-1b,wePc-1b,weReg-1b,weMem-1b,Mux4-1n,Mux2-2b,Mux1-1b
               // (Opcode == 7'b0110011) ? 8'b001000010 : // Store
@@ -171,7 +171,7 @@ module UC (clk,state_reg,opcode,alu_cmd,Mux1, Mux2, Mux4, weMem, weReg, wePc, we
         WRITE_BACK:
           /* if (wb_counter == 8) */
            begin  // Transition to IDLE after 8 cycles in WB state
-           wePc =0;
+
           end
       endcase
     end
