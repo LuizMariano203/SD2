@@ -23,11 +23,29 @@ module testbench;
         
         //*******************************Abaixo é a simulação: ********************************************************************
         clock_tb = 0;
-        rst_n_tb = 1;
-        #10
         rst_n_tb = 0;
+        #10
+        rst_n_tb = 1;
 
-        #1000
+        #10
+        #10
+        #10
+        #10
+        #10
+        #10
+        #10
+        #10
+        #10
+        #10
+        #10
+        #10
+        #10
+        #10
+        #10
+        #10
+        #10
+        #10
+        #10
 
         $display("Fim da simulação");
         $finish;
@@ -36,9 +54,6 @@ module testbench;
     end
 
         always #10 clock_tb = ~clock_tb;
-    
-    
-
 
 
 endmodule
